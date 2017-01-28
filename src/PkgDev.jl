@@ -51,6 +51,19 @@ tag(pkg::AbstractString, ver::VersionNumber; force::Bool=false) = cd(Entry.tag,p
 tag(pkg::AbstractString, ver::VersionNumber, commit::AbstractString; force::Bool=false) =
     cd(Entry.tag,pkg,ver,force,commit)
 
+"""
+    tag_repo(pkg, ver, [commit])
+
+Tag `commit` as version `ver` of package `pkg`, adding the tag only to
+the package git repository. `pkg` must be registered, and can be used
+to add missing tags to the package repository. By default, `commit` is
+chosen as the sha1 registered for version `ver`.
+"""
+tag_repo(pkg::AbstractString, ver::VersionNumber, commit::AbstractString; force::Bool=false) =
+    cd(Entry.tag_repo, pkg, ver, force, commit)
+tag_repo(pkg::AbstractString, ver::VersionNumber; force::Bool=false) =
+    tag_repo(pkg, ver, Pkg.Read.sha1(pkg, ver); force=force)
+
 submit(pkg::AbstractString) = cd(Entry.submit, pkg)
 submit(pkg::AbstractString, commit::AbstractString) = cd(Entry.submit,pkg,commit)
 
@@ -147,6 +160,55 @@ of a tagged release, and prints the number of commits that separate them. It can
 discover packages that may be due for tagging.
 """
 freeable(args...) = cd(Entry.freeable, args...)
+
+"""
+    PkgDev.add_upperbound(pkg, dependent, version)
+
+Assuming package `pkg` dependents on package `dependent`, place an
+upper bound on the version number of `dependent`.  This affects only
+the most recent version of `pkg` (see also `propagate_upperbound`).
+
+# Example
+
+Suppose `ColorTypes` has a REQUIRE file that looks like this:
+
+    julia 0.4
+    FixedPointNumbers 0.1.0
+
+and that this is registered with METADATA. Now suppose you are
+introducing breaking changes in version 0.3.0 of `FixedPointNumbers`.
+Using
+
+    PkgDev.add_upperbound("ColorTypes", "FixedPointNumbers", v"0.3.0")
+
+you modify both the package's REQUIRE file and the latest
+`METADATA/ColorTypes/versions/x.x.x/requires` file to be
+
+    julia 0.4
+    FixedPointNumbers 0.1.0 0.3.0
+
+Both of these changes need to be committed and submitted.
+
+See also: PkgDev.propagate_upperbound.
+"""
+add_upperbound(pkg::AbstractString, dependent::AbstractString, version::VersionNumber) =
+    Entry.add_upperbound(pkg, dependent, version)
+
+"""
+    PkgDev.propagate_upperbound(pkg, dependent)
+
+For package `pkg`, propagate the upper bound for package `dependent`
+(as specified in the latest tagged version of `pkg`) backwards through
+previous tags. Any previous lower upper bounds are retained. At the
+conclusion of the process, all previous versions of `pkg` will have an
+upper bound for `dependent`.
+
+The changes in METADATA must be committed and published separately.
+
+See also: `add_upperbound`.
+"""
+propagate_upperbound(pkg::AbstractString, dependent::AbstractString) =
+    Entry.propagate_upperbound(pkg, dependent)
 
 function __init__()
     # Check if git configuration exists
