@@ -379,7 +379,6 @@ function propagate_upperbound(pkg::AbstractString, dependent::AbstractString)
     end
     i = find_dependent_index(lines, dependent, pkg)
     vs = getvs(lines[i])
-    vs.upper < typemax(VersionNumber) || error("current upper bound on latest ($latest) is $(vs.upper)")
 
     upper = vs.upper
     for v in versions[end-1:-1:1]
